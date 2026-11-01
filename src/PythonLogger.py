@@ -6,7 +6,6 @@ from ctypes import create_unicode_buffer
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
-import os
 
 import keyboard
 import pyautogui
@@ -24,7 +23,7 @@ class MonitorDeAtividade:
     def __init__(self) -> None:
         """Inicializa o estado do monitor e define o arquivo CSV do dia."""
         data_atual = datetime.now().date().isoformat()
-        self.caminho_log = os.path.join(Path.cwd(), "log", f"logger_{data_atual}.csv")
+        self.caminho_log = Path.cwd() / "log" / f"logger_{data_atual}.csv"
         agora = datetime.now()
         self.janela_atual = ""
         self.inicio_janela_atual = agora
