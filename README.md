@@ -1,9 +1,15 @@
 # PythonLogger
 
-# Demo:
-https://user-images.githubusercontent.com/82986559/189064841-6b995b88-211e-4cc1-83cc-a369ba1b2e8a.mp4
+O projeto monitora o tempo de uso das janelas no Windows e registra as trocas
+em um arquivo CSV chamado `logger_AAAA-MM-DD.csv`, criado na pasta em que o
+programa for iniciado.
 
-# Objetivo: Monitor/Controle de tempo entre tarefas no PC
-# Grava um registro no log para cada troca de tela no windows, bem como, caso não ocorra nenhum movimento do mouse por 1 minuto, o próximo registro de log
-# informará que no intervalo de tempo o PC ficou ocioso
+Quando o mouse permanece parado por dois minutos, o CSV recebe um registro de
+possível ausência. O monitor pode ser pausado com `Ctrl + K` e encerrado com
+`Ctrl + C`.
 
+Para iniciar:
+
+```shell
+python main.py
+```

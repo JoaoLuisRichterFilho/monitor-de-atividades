@@ -1,128 +1,125 @@
-from ast import Not, While
-from asyncio.windows_events import NULL
-from tokenize import Name
-from typing import Optional
-from ctypes import wintypes, windll, create_unicode_buffer
-import base64
-from tkinter import *
-from tkinter import ttk
-# import tkMessageBox
-import tkinter
-from tkinter.filedialog import askopenfilenames
-from tkinter.filedialog import asksaveasfile
-import tkinter.font as font
-from datetime import datetime
-import pyautogui
-import keyboard 
+"""Monitora janelas ativas e registra o tempo de uso em um arquivo CSV."""
+
+import csv
 import time
-import sys
-import os
+from ctypes import create_unicode_buffer
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
 
-input("Durante o monitoramento, pressione <CTRL + K> para pausar ou <CTRL + C> caso deseje encerrar. Pressione <ENTER> agora para iniciar o monitoramento...")
-
-def pauseScript():
-    programPause = input("Pressione <ENTER> para continuar...")
-    if keyboard.is_pressed('S'):
-        logAdd(getForegroundWindowTitle())
-
-    # keyboard.wait('enter')
-    # iLoop = True
-    # while iLoop:
-    #     # time.sleep(1)
-        # if keyboard.is_pressed('ctrl + i'):  # if key 'q' is pressed 
-        #     print('Monitoramento reiniciado!')
-        #     iLoop = False
-        # else:
-        #     iLoop = True
-        # keyboard.wait('esc')
-  
-nameFile = datetime.now().date()
-lasttime = datetime.now()
-lastWindow = ""
-def logAdd(windowName):
-    global lasttime
-    global lastWindow
-    
-    try:
-        if lastWindow and lastWindow != "":
-            if windowName:
-                with open("logger_"+str(nameFile)+".csv", "a+", encoding="utf-8") as file_object:
-                    now = datetime.now()
-                    diff = now - lasttime
-                    # Move read cursor to the start of file.
-                    file_object.seek(0)
-                    # If file is not empty then append '\n'
-                    data = file_object.read(100)
-                    if len(data) > 0 :
-                        file_object.write("\n")                        
-                    
-                    file_object.write( now.strftime("%d/%m/%Y %H:%M:%S") + ";" + lastWindow.replace("\\u25cf", "") + ";" + str(diff))
-                    print('write log: ' + lastWindow)
-                    lasttime = datetime.now()
-                    lastWindow = windowName 
-        else:
-            lastWindow = windowName
-    except NameError:
-        print('Fail to write' + str(NameError))
-
-def getForegroundWindowTitle() -> Optional[str]:
-    hWnd = windll.user32.GetForegroundWindow()
-    length = windll.user32.GetWindowTextLengthW(hWnd)
-    buf = create_unicode_buffer(length + 1)
-    windll.user32.GetWindowTextW(hWnd, buf, length + 1)
-    
-    # 1-liner alternative: return buf.value if buf.value else None
-    if buf.value:
-        return buf.value
-    else:
-        return None
+import keyboard
+import pyautogui
+from plyer import notification
 
 
-def startMon():
-    loop = True
-    windowActive = ""
-    lastmousepos = pyautogui.position()
-    lasttime = datetime.now()
-    tempo_inativo = 0;
-    while loop:
-        if keyboard.is_pressed('ctrl + k'):
-            pauseScript()
-        
-        # keyboard.add_hotkey('ctrl + k', ) 
-        if getForegroundWindowTitle() and windowActive != getForegroundWindowTitle():
-            logAdd(getForegroundWindowTitle())
-            windowActive = getForegroundWindowTitle()
-            print(windowActive)
-            lastmousepos = pyautogui.position()
-            lasttimemouse = datetime.now()
-        else: 
-            #nao trocou de tela, espera 1 segundo
-            time.sleep(1)
-            mousepos = pyautogui.position()
+NOME_APLICACAO = "Monitor de Atividade"
+TECLA_PAUSA = "ctrl + k"
+LIMITE_INATIVIDADE_SEGUNDOS = 120
 
-            #se a posicao do mouse mudou, ta ativo
-            if(mousepos != lastmousepos):
-                lastmousepos = mousepos
-                lasttimemouse = datetime.now()
-                print('ativo');
-                if(tempo_inativo >= 120):
-                    tempo_inativo = 0
-                    logAdd('possivel ausencia temporaria > 2min')
-            else:
-                #tela parada e mouse nao mudou, pode estar inativo
-                nowmouse = datetime.now()
-                tdelta = nowmouse - lasttimemouse
-                tempo_inativo = tdelta.total_seconds()
-                print('segundos parado:', tdelta.total_seconds())
-                # if(nowmouse)
 
-try:
-    startMon()
-except KeyboardInterrupt:
-    print('Finalizado')
-    try:
-        logAdd(getForegroundWindowTitle())
-        sys.exit(0)
-    except SystemExit:
-        os._exit(0)
+class MonitorDeAtividade:
+    """Monitora a janela ativa, a atividade do mouse e grava os registros."""
 
+    def __init__(self) -> None:
+        """Inicializa o estado do monitor e define o arquivo CSV do dia."""
+        data_atual = datetime.now().date().isoformat()
+        self.caminho_log = Path.cwd() / f"logger_{data_atual}.csv"
+        agora = datetime.now()
+        self.janela_atual = ""
+        self.inicio_janela_atual = agora
+        self.posicao_mouse = pyautogui.position()
+        self.ultima_atividade_mouse = agora
+        self.inatividade_registrada = False
+
+    def obter_titulo_janela_ativa(self) -> Optional[str]:
+        """Retorna o título da janela em primeiro plano ou ``None``."""
+        from ctypes import windll
+
+        identificador = windll.user32.GetForegroundWindow()
+        if not identificador:
+            return None
+
+        tamanho = windll.user32.GetWindowTextLengthW(identificador)
+        buffer = create_unicode_buffer(tamanho + 1)
+        windll.user32.GetWindowTextW(identificador, buffer, tamanho + 1)
+        return buffer.value or None
+
+    def gravar_registro(self, titulo: str, duracao: timedelta) -> None:
+        """Acrescenta ao CSV a data, o título da janela e a duração."""
+        self.caminho_log.parent.mkdir(parents=True, exist_ok=True)
+        horario = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        titulo = titulo.replace("\\u25cf", "")
+
+        with self.caminho_log.open("a", newline="", encoding="utf-8") as arquivo:
+            escritor = csv.writer(arquivo, delimiter=";")
+            escritor.writerow([horario, titulo, str(duracao)])
+
+    def registrar_troca_de_janela(self, novo_titulo: str) -> None:
+        """Registra a janela anterior e inicia a contagem da nova janela."""
+        agora = datetime.now()
+        if self.janela_atual:
+            duracao = agora - self.inicio_janela_atual
+            self.gravar_registro(self.janela_atual, duracao)
+
+        self.janela_atual = novo_titulo
+        self.inicio_janela_atual = agora
+        self.posicao_mouse = pyautogui.position()
+        self.ultima_atividade_mouse = agora
+        self.inatividade_registrada = False
+
+    def verificar_inatividade(self) -> None:
+        """Registra uma ocorrência quando o mouse fica parado por dois minutos."""
+        agora = datetime.now()
+        posicao_atual = pyautogui.position()
+
+        if posicao_atual != self.posicao_mouse:
+            self.posicao_mouse = posicao_atual
+            self.ultima_atividade_mouse = agora
+            self.inatividade_registrada = False
+            return
+
+        duracao = agora - self.ultima_atividade_mouse
+        if (
+            duracao.total_seconds() >= LIMITE_INATIVIDADE_SEGUNDOS
+            and not self.inatividade_registrada
+        ):
+            self.gravar_registro("possivel ausencia temporaria > 2min", duracao)
+            self.inatividade_registrada = True
+
+    def pausar(self) -> None:
+        """Pausa a execução até que o usuário pressione Enter."""
+        input("Pressione <ENTER> para continuar...")
+
+    def executar(self) -> None:
+        """Inicia o aviso e executa o monitor até o usuário interrompê-lo."""
+        notification.notify(
+            title="Monitor de Atividade Iniciado",
+            message=(
+                "Durante o monitoramento, pressione <CTRL + K> para pausar "
+                "ou <CTRL + C> para encerrar."
+            ),
+            app_name=NOME_APLICACAO,
+            timeout=20,
+        )
+
+        try:
+            while True:
+                if keyboard.is_pressed(TECLA_PAUSA):
+                    self.pausar()
+
+                titulo = self.obter_titulo_janela_ativa()
+                if titulo and titulo != self.janela_atual:
+                    self.registrar_troca_de_janela(titulo)
+                else:
+                    self.verificar_inatividade()
+
+                time.sleep(1)
+        finally:
+            if self.janela_atual:
+                duracao = datetime.now() - self.inicio_janela_atual
+                self.gravar_registro(self.janela_atual, duracao)
+
+
+def iniciar_monitoramento() -> None:
+    """Cria o monitor e inicia a coleta de atividade."""
+    MonitorDeAtividade().executar()
