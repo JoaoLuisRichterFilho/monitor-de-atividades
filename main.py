@@ -1,6 +1,6 @@
 """Ponto de entrada do monitor de atividade."""
 
-from src.PythonLogger import iniciar_monitoramento
+from Monitor import iniciar_monitoramento
 
 
 if __name__ == "__main__":

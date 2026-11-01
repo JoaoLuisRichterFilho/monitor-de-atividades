@@ -1,4 +1,4 @@
-# PythonLogger
+# Monitor de Atividades
 
 O projeto monitora o tempo de uso das janelas no Windows e registra as trocas
 em um arquivo CSV chamado `logger_AAAA-MM-DD.csv`, criado na pasta em que o

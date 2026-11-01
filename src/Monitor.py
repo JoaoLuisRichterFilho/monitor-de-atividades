@@ -92,15 +92,16 @@ class MonitorDeAtividade:
 
     def executar(self) -> None:
         """Inicia o aviso e executa o monitor até o usuário interrompê-lo."""
-        notification.notify(
-            title="Monitor de Atividade Iniciado",
-            message=(
-                "Durante o monitoramento, pressione <CTRL + K> para pausar "
-                "ou <CTRL + C> para encerrar."
-            ),
-            app_name=NOME_APLICACAO,
-            timeout=20,
-        )
+        if notification.notify is not None:
+            notification.notify(
+                title="Monitor de Atividade Iniciado",
+                message=(
+                    "Durante o monitoramento, pressione <CTRL + K> para pausar "
+                    "ou <CTRL + C> para encerrar."
+                ),
+                app_name=NOME_APLICACAO,
+                timeout=20,
+            )
 
         try:
             while True:
